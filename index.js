@@ -48,6 +48,7 @@ const schema = {
 (async () => {
   
   try {
+    console.log('Creating collection...');
     await client.collections().create(schema);
   } catch (err) {
     // 409 = Already exists
@@ -64,6 +65,7 @@ const schema = {
 
   let steamJson;
   try {
+    console.log('Requesting Steam API...');
     steamJson = await request(steamOptions);
   } catch (err) {
     console.log(err);
@@ -71,35 +73,44 @@ const schema = {
   }
 
   // Convert all games to JSONL format for bulk indexing
-  let bulkDocuments = '';
+  console.log('Preparing bulk documents...');
+  let bulkDocuments = [];
+  let bulkDocument = '';
   for (let i = 0; i < steamJson.applist.apps.length; i++) {
+    if (i > 0 && (i % 10000 === 0 || i === steamJson.applist.apps.length - 1)) {
+      bulkDocuments.push(bulkDocument);
+      bulkDocument = '';
+    }
     const element = steamJson.applist.apps[i];
-    bulkDocuments += JSON.stringify({
+    bulkDocument += JSON.stringify({
       'id': element.appid.toString(),
       'appid': element.appid,
       'name': element.name,
       'image': `https://steamcdn-a.akamaihd.net/steam/apps/${element.appid}/header.jpg`,
       'steam_url': `https://store.steampowered.com/app/${element.appid}/`
     });
-    bulkDocuments += '\n';
+    bulkDocument += '\n';
   }
 
-  if (bulkDocuments === '') return;
+  if (bulkDocuments.length === 0) return;
 
   const bulkOptions = {
     method: 'POST',
-    body: bulkDocuments,
+    body: '',
     url: `${PROTOCOL}://${HOST}:${PORT}/collections/games/documents/import`,
     headers: {
       'X-TYPESENSE-API-KEY': API_KEY
     }
   }
 
-  try {
+  fs.writeFileSync('typesense_import_response.txt', '');
+
+  for (let i = 0; i < bulkDocuments.length; i++) {
+    bulkOptions.body = bulkDocuments[i];
+    console.log('Bulk inserting...', i);
     const bulkResponse = await request(bulkOptions);
-    fs.writeFileSync('typesense_import_response.txt', bulkResponse);
-  } catch (err) {
-    console.log(err);
+    console.log('Bulk insert done');
+    fs.writeFileSync('typesense_import_response.txt', bulkResponse, {'flag': 'a'});
   }
 
   const collections = await client.collections().retrieve();
