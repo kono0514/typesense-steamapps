@@ -1,4 +1,4 @@
-# typescript-steamapps
+# typesense-steamapps
 Indexes steam games to Typesense
 
 https://hub.docker.com/r/typesense/typesense
