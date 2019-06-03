@@ -110,8 +110,10 @@ const schema = {
     console.log('Bulk inserting...', i);
     const bulkResponse = await request(bulkOptions);
     console.log('Bulk insert done');
-    fs.writeFileSync('typesense_import_response.txt', bulkResponse, {'flag': 'a'});
+    fs.writeFileSync('typesense_import_response.txt', bulkResponse + '\n', {'flag': 'a'});
   }
+
+  fs.writeFileSync('typesense_import_response.txt', 'Completed at: ' + new Date().toString(), {'flag': 'a'});
 
   const collections = await client.collections().retrieve();
   console.log(collections);
